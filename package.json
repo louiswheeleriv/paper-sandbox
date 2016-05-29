@@ -5,8 +5,9 @@
   "main": "index.js",
   "dependencies": {
     "bootstrap": "^3.3.6",
+    "express": "^4.13.4",
     "jquery": "^2.2.4",
-    "express": "^4.13.4"
+    "lodash": "^4.13.1"
   },
   "devDependencies": {},
   "scripts": {

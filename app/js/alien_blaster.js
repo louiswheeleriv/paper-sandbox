@@ -20,6 +20,8 @@ var STAR_VECTOR = (new Point(0.4, 1)) - (new Point(0, 0));
 
 var INVADER_SPEED = 3;
 var BULLET_SPEED = 8;
+var BULLET_LENGTH = 30;
+var BULLET_WIDTH = 7;
 
 //
 // Path definitions for entity appearance
@@ -50,6 +52,35 @@ var starPath = new Path.Circle({
 });
 
 //
+// Text definitions
+//
+
+var scoreText = new PointText({
+    point: [20, 40],
+    justification: 'left',
+    fontSize: 20,
+    fillColor: 'white',
+    content: 'Score: 0'
+});
+
+var healthText = new PointText({
+    point: [view.size.width - 100, 40],
+    justification: 'left',
+    fontSize: 20,
+    fillColor: 'white',
+    content: 'Health: 3'
+});
+
+var deathText = new PointText({
+    point: [view.size.width / 2, view.size.height / 2],
+    justification: 'center',
+    fontSize: 30,
+    fillColor: 'white',
+    content: 'You ded',
+    visible: false
+});
+
+//
 // Symbols for drawing entities
 //
 
@@ -77,13 +108,13 @@ function Defender(p) {
 function Bullet(p1, p2) {
     this.point = p1;
     this.unitVector = (p2 - p1).normalize();
-    
-    this.bulletLength = 30;
-    this.bulletWidth = 7;
-    
+
+    this.bulletLength = BULLET_LENGTH;
+    this.bulletWidth = BULLET_WIDTH;
+
     this.vector = (this.unitVector * BULLET_SPEED);
     this.drawVector = (this.unitVector * this.bulletLength);
-    
+
     this.path = new Path({
         segments: [
             this.point,
@@ -97,9 +128,7 @@ function Bullet(p1, p2) {
 
 function Star(p, s) {
     this.point = p;
-    console.log('star scale = ' + s);
     this.vector = STAR_VECTOR * s;
-    console.log('star vector = ' + this.vector);
     this.symbol = starSymbol.place(this.point);
     this.symbol.scale(s);
 }
@@ -113,7 +142,7 @@ Invader.prototype = {
         this.point += this.vector;
         this.symbol.position = this.point;
     },
-    
+
     isPastBottom: function() {
         return (this.point.y >= (view.size.height + INVADER_RADIUS));
     }
@@ -136,7 +165,7 @@ Bullet.prototype = {
         this.path.add(new Point(this.point));
         this.path.add(new Point(this.point + this.drawVector));
     },
-    
+
     isOutOfBounds: function() {
         return (
             this.point.x < 0 ||
@@ -145,23 +174,22 @@ Bullet.prototype = {
             this.point.y > view.size.height
         );
     },
-    
+
     detectHit: function(target) {
         return (
-            this.point.getDistance(target.point) < target.radius ||
-            (this.point + this.drawVector).getDistance(target.point) < target.radius
+            this.point.getDistance(target.point) < (target.radius + this.bulletWidth) ||
+            (this.point + this.drawVector).getDistance(target.point) < (target.radius + this.bulletWidth)
         );
     }
 }
 
 Star.prototype = {
     progress: function() {
-        console.log('moving star');
         this.point += this.vector;
         this.symbol.position = this.point;
         this.wrapBorders();
     },
-    
+
     wrapBorders: function() {
         if (this.point.x < -STAR_RADIUS_MAX) {
             this.point.x = view.size.width + STAR_RADIUS_MAX;
@@ -209,7 +237,7 @@ for (var i = 0; i < NUM_STARS; i++) {
 //
 
 var numDefenders = 1;           // Num defenders in game
-var health = 10;                // Num invaders allowed through before death
+var health = 3;                 // Num invaders allowed through before death
 
 var invaderRate = 200;          // Frames between invader spawns
 var framesSinceSpawn = 0;       // Frames since last spawn
@@ -236,14 +264,19 @@ function onFrame() {
     moveInvaders();
     moveBullets();
     moveStars();
+    if (health <= 0) {
+        gameOver();
+    }
 }
 
 function onMouseUp(event) {
-    bullets.push(defenders[0].fire(event.point));
+    if (health > 0) {
+        bullets.push(defenders[0].fire(event.point));
+    }
 }
 
 function spawnInvaders() {
-    if (framesSinceSpawn == invaderRate) {
+    if (framesSinceSpawn == invaderRate && health > 0) {
         var invader = new Invader(
             new Point(
                 getRandomInt(
@@ -255,7 +288,7 @@ function spawnInvaders() {
             [0, INVADER_SPEED]
         );
         invaders.push(invader);
-        
+
         framesSinceSpawn = 0;
     } else {
         framesSinceSpawn++;
@@ -265,13 +298,16 @@ function spawnInvaders() {
 function moveInvaders() {
     for (var i = 0; i < invaders.length; i++) {
         invaders[i].progress();
-        
+
         if (invaders[i].isPastBottom()) {
             // Invader hit bottom
             invaders[i].symbol.remove();
             invaders.splice(i, 1);
             invadersAllowedThrough++;
+            health--;
             i--;
+
+            healthText.content = ('Health: ' + health);
         }
     }
 }
@@ -279,7 +315,7 @@ function moveInvaders() {
 function moveBullets() {
     for (var i = 0; i < bullets.length; i++) {
         bullets[i].progress();
-        
+
         if (bullets[i].isOutOfBounds()) {
             // Bullet is out of bounds
             bullets[i].path.remove();
@@ -293,9 +329,11 @@ function moveBullets() {
                     invaders[j].symbol.remove();
                     invaders.splice(j, 1);
                     invadersKilled++;
-                    
+
                     bullets[i].path.remove();
                     bullets.splice(i, 1);
+
+                    scoreText.content = ('Score: ' + invadersKilled);
                     break;
                 }
             }
@@ -307,6 +345,11 @@ function moveStars() {
     for (var i = 0; i < stars.length; i++) {
         stars[i].progress();
     }
+}
+
+function gameOver() {
+    // Player is dead!
+    deathText.visible = true;
 }
 
 function getRandomInt(min, max) {

@@ -19,7 +19,7 @@ router.get('/', function(req, res) {
 app.use('/', router);
 
 // Specify resource directories
-app.use(express.static(__dirname + '/../public/lib'));
+app.use(express.static(__dirname + '/../bower_components'));
 app.use(express.static(__dirname + '/../node_modules'));
 app.use(express.static(__dirname + '/js'));
 app.use(express.static(__dirname + '/css'));

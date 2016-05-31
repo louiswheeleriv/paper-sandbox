@@ -377,11 +377,10 @@ function clearDemBois(bois) {
 function createDemBois(numToCreate) {
     var bois = [];
     for (var i = 0; i < numToCreate; i++) {
-        //var center = Point.random() * view.size;
-        var center = new Point(view.size.width + DAT_BOI_RADIUS_MAX, 200);
+        var point = new Point(view.size.width + DAT_BOI_RADIUS_MAX, 200);
         var scale = 0.25;
         var vector = [-2, 0];
-        bois.push(new DatBoi(center, scale, vector));
+        bois.push(new DatBoi(point, scale, vector));
     }
     return bois;
 }

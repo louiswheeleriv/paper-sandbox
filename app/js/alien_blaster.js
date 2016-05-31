@@ -14,6 +14,7 @@ var COLOR_STAR_BORDER = '#ffff99';
 var INVADER_RADIUS = 15;
 var DEFENDER_RADIUS = 20;
 var STAR_RADIUS_MAX = 7;
+var DAT_BOI_RADIUS_MAX = 50;
 
 var NUM_STARS = 20;
 var STAR_VECTOR = (new Point(0.4, 1)) - (new Point(0, 0));
@@ -24,7 +25,7 @@ var BULLET_LENGTH = 30;
 var BULLET_WIDTH = 7;
 
 var NUM_DEFENDERS = 1;
-var PLAYER_MAX_HEALTH = 3;
+var PLAYER_MAX_HEALTH = 1;
 var INVADER_RATE = 150;
 
 //
@@ -84,6 +85,15 @@ var deathText = new PointText({
     visible: false
 });
 
+var restartText = new PointText({
+    point: [view.size.width / 2, (view.size.height / 2) + 50],
+    justification: 'center',
+    fontSize: 30,
+    fillColor: 'white',
+    content: 'Press R to restart',
+    visible: false
+});
+
 //
 // Symbols for drawing entities
 //
@@ -135,6 +145,20 @@ function Star(p, s) {
     this.vector = STAR_VECTOR * s;
     this.symbol = starSymbol.place(this.point);
     this.symbol.scale(s);
+}
+
+function DatBoi(p, s, v) {
+    this.point = p;
+    this.scale = s;
+    this.vector = v;
+    this.frameCount = 0;
+    this.animateAtFrames = 5;
+    this.bouncePixels = 10;
+    this.raster = new Raster({
+        source: 'dat_boi',
+        position: this.point
+    });
+    this.raster.scale(this.scale);
 }
 
 //
@@ -211,6 +235,40 @@ Star.prototype = {
     }
 }
 
+DatBoi.prototype = {
+    progress: function() {
+        this.point += this.vector;
+        if (this.frameCount == this.animateAtFrames) {
+            this.point.y -= this.bouncePixels;
+        } else if (this.frameCount == (this.animateAtFrames * 2)) {
+            this.point.y += this.bouncePixels;
+            this.frameCount = 0;
+        }
+        this.raster.position = this.point;
+        this.wrapBorders();
+        this.frameCount++;
+    },
+    
+    wrapBorders: function() {
+        if (this.point.x < -DAT_BOI_RADIUS_MAX) {
+            this.point.x = view.size.width + DAT_BOI_RADIUS_MAX;
+            this.raster.position.x = this.point.x;
+        }
+        if (this.point.x > view.size.width + DAT_BOI_RADIUS_MAX) {
+            this.point.x = -DAT_BOI_RADIUS_MAX;
+            this.raster.position.x = this.point.x;
+        }
+        if (this.point.y < -DAT_BOI_RADIUS_MAX) {
+            this.point.y = view.size.height + DAT_BOI_RADIUS_MAX;
+            this.raster.position.y = this.point.y;
+        }
+        if (this.point.y > view.size.height + DAT_BOI_RADIUS_MAX) {
+            this.point.y = -DAT_BOI_RADIUS_MAX;
+            this.raster.position.y = this.point.y;
+        }
+    }
+}
+
 //
 // Background effects
 //
@@ -222,46 +280,6 @@ var background = new Path.Rectangle({
     fillColor: COLOR_BACKGROUND
 });
 background.sendToBack();
-
-//
-// Game data setup
-//
-
-var invaders = [];
-var defenders = [];
-var bullets = [];
-var stars = [];
-
-var numDefenders = NUM_DEFENDERS;           // Num defenders in game
-var health = PLAYER_MAX_HEALTH;                 // Num invaders allowed through before death
-
-var invaderRate = INVADER_RATE;          // Frames between invader spawns
-var framesSinceSpawn = 0;       // Frames since last spawn
-var invadersAllowedThrough = 0; // Num invaders which reached bottom
-var invadersKilled = 0;         // Num invaders killed
-
-//
-// Start game!
-//
-
-setupGame(numDefenders, health, invaderRate);
-
-function setupGame(numDef, hp, invRate) {
-    invaders = clearInvaders(invaders);
-    bullets = clearBullets(bullets);
-    clearDefenders(defenders);
-    defenders = createDefenders(NUM_DEFENDERS);
-
-    if (stars.length == 0) {
-        stars = createStars();
-    }
-
-    health = hp;
-    healthText.content = ('Health: ' + health);
-    deathText.visible = false;
-
-    scoreText.content = ('Score: ' + 0);
-}
 
 //
 // Object API (Clear & Create functions)
@@ -338,28 +356,81 @@ function clearStars(strs) {
     return strs;
 }
 
-function createStars() {
+function createStars(numToCreate) {
     var strs = [];
-    for (var i = 0; i < NUM_STARS; i++) {
+    for (var i = 0; i < numToCreate; i++) {
         var center = Point.random() * view.size;
-        strs.push(new Star(center, i / NUM_STARS));
+        strs.push(new Star(center, i / numToCreate));
     }
     return strs;
 }
 
+// Dem Bois
+function clearDemBois(bois) {
+    for (var i = 0; i < bois.length; i++) {
+        bois[i].raster.remove();
+    }
+    bois = [];
+    return bois;
+}
+
+function createDemBois(numToCreate) {
+    var bois = [];
+    for (var i = 0; i < numToCreate; i++) {
+        //var center = Point.random() * view.size;
+        var center = new Point(view.size.width + DAT_BOI_RADIUS_MAX, 200);
+        var scale = 0.25;
+        var vector = [-2, 0];
+        bois.push(new DatBoi(center, scale, vector));
+    }
+    return bois;
+}
+
 //
-// Game tick
+// Game data setup
 //
 
-function onFrame() {
-    spawnInvaders();
-    moveInvaders();
-    moveBullets();
-    moveStars();
-    if (health <= 0) {
-        gameOver();
-    }
+var invaders = [];
+var defenders = [];
+var bullets = [];
+var stars = [];
+var demBois = [];
+
+var numDefenders = NUM_DEFENDERS;  // Num defenders in game
+var health = PLAYER_MAX_HEALTH;    // Num invaders allowed through before death
+
+var invaderRate = INVADER_RATE;    // Frames between invader spawns
+var framesSinceSpawn = 0;          // Frames since last spawn
+var invadersAllowedThrough = 0;    // Num invaders which reached bottom
+var invadersKilled = 0;            // Num invaders killed
+
+//
+// Start game!
+//
+
+setupGame(numDefenders, health, invaderRate);
+
+function setupGame(numDef, hp, invRate) {
+    invaders = clearInvaders(invaders);
+    bullets = clearBullets(bullets);
+    clearDefenders(defenders);
+    clearStars(stars);
+    stars = createStars(NUM_STARS);
+    defenders = createDefenders(NUM_DEFENDERS);
+
+    health = hp;
+    deathText.visible = false;
+    restartText.visible = false;
+    healthText.content = ('Health: ' + health);
+    scoreText.content = ('Score: ' + 0);
+    
+    clearDemBois(demBois);
+    demBois = createDemBois(1);
 }
+
+//
+// Input handlers
+//
 
 function onMouseUp(event) {
     if (isPlayerAlive()) {
@@ -368,7 +439,26 @@ function onMouseUp(event) {
 }
 
 function onKeyUp(event) {
-    setupGame(NUM_DEFENDERS, PLAYER_MAX_HEALTH, INVADER_RATE);
+    // If R key pressed, reset
+    if (event.key == 'r') {
+        setupGame(NUM_DEFENDERS, PLAYER_MAX_HEALTH, INVADER_RATE);
+    }
+}
+
+//
+// Game tick
+//
+
+function onFrame() {
+    if (isPlayerAlive()) {
+        spawnInvaders();
+        moveInvaders();
+        moveBullets();
+    } else {
+        moveDemBois();
+    }
+    moveStars();
+    
 }
 
 function spawnInvaders() {
@@ -389,8 +479,12 @@ function moveInvaders() {
             invaders[i].symbol.remove();
             invaders.splice(i, 1);
             invadersAllowedThrough++;
-            if (health > 0)
+            if (health > 0) {
                 health--;
+                if (health <= 0) {
+                    gameOver();
+                }
+            }
             i--;
 
             healthText.content = ('Health: ' + health);
@@ -433,6 +527,12 @@ function moveStars() {
     }
 }
 
+function moveDemBois() {
+    for (var i = 0; i < demBois.length; i++) {
+        demBois[i].progress();
+    }
+}
+
 function isPlayerAlive() {
     return (health > 0);
 }
@@ -440,7 +540,9 @@ function isPlayerAlive() {
 function gameOver() {
     // Player is dead!
     deathText.visible = true;
-
+    restartText.visible = true;
+    invaders = clearInvaders(invaders);
+    bullets = clearBullets(bullets);
 }
 
 function getRandomInt(min, max) {

@@ -1,0 +1,14 @@
+{
+  "name": "paper-sandbox",
+  "description": "A simple web server for playing with paper.js",
+  "main": "server.js",
+  "authors": [
+    "Louis Wheeler"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/louiswheeleriv/paper-sandbox",
+  "private": true,
+  "dependencies": {
+    "paper": "^0.9.25"
+  }
+}

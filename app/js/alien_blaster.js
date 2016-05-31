@@ -23,6 +23,10 @@ var BULLET_SPEED = 8;
 var BULLET_LENGTH = 30;
 var BULLET_WIDTH = 7;
 
+var NUM_DEFENDERS = 1;
+var PLAYER_MAX_HEALTH = 3;
+var INVADER_RATE = 150;
+
 //
 // Path definitions for entity appearance
 //
@@ -68,7 +72,7 @@ var healthText = new PointText({
     justification: 'left',
     fontSize: 20,
     fillColor: 'white',
-    content: 'Health: 3'
+    content: ('Health: ' + PLAYER_MAX_HEALTH)
 });
 
 var deathText = new PointText({
@@ -150,10 +154,7 @@ Invader.prototype = {
 
 Defender.prototype = {
     fire: function(targetPoint) {
-        return new Bullet(
-            this.point,
-            targetPoint
-        );
+        return createBullet(this.point, targetPoint);
     }
 };
 
@@ -214,11 +215,6 @@ Star.prototype = {
 // Background effects
 //
 
-var invaders = [];
-var defenders = [];
-var bullets = [];
-var stars = [];
-
 var background = new Path.Rectangle({
     point: [0, 0],
     size: [view.size.width, view.size.height],
@@ -227,32 +223,128 @@ var background = new Path.Rectangle({
 });
 background.sendToBack();
 
-for (var i = 0; i < NUM_STARS; i++) {
-    var center = Point.random() * view.size;
-    stars.push(new Star(center, i / NUM_STARS));
-}
-
 //
-// Setup before start
+// Game data setup
 //
 
-var numDefenders = 1;           // Num defenders in game
-var health = 3;                 // Num invaders allowed through before death
+var invaders = [];
+var defenders = [];
+var bullets = [];
+var stars = [];
 
-var invaderRate = 200;          // Frames between invader spawns
+var numDefenders = NUM_DEFENDERS;           // Num defenders in game
+var health = PLAYER_MAX_HEALTH;                 // Num invaders allowed through before death
+
+var invaderRate = INVADER_RATE;          // Frames between invader spawns
 var framesSinceSpawn = 0;       // Frames since last spawn
 var invadersAllowedThrough = 0; // Num invaders which reached bottom
 var invadersKilled = 0;         // Num invaders killed
 
-for (var i = 0; i < numDefenders; i++) {
-    var defenderRangeWidth = (view.size.width / numDefenders);
-    var xPos = (defenderRangeWidth * (i + 1) - (defenderRangeWidth / 2));
-    defenders.push(new Defender(
+//
+// Start game!
+//
+
+setupGame(numDefenders, health, invaderRate);
+
+function setupGame(numDef, hp, invRate) {
+    invaders = clearInvaders(invaders);
+    bullets = clearBullets(bullets);
+    clearDefenders(defenders);
+    defenders = createDefenders(NUM_DEFENDERS);
+
+    if (stars.length == 0) {
+        stars = createStars();
+    }
+
+    health = hp;
+    healthText.content = ('Health: ' + health);
+    deathText.visible = false;
+
+    scoreText.content = ('Score: ' + 0);
+}
+
+//
+// Object API (Clear & Create functions)
+//
+
+// Invaders
+function clearInvaders(invdrs) {
+    for (var i = 0; i < invdrs.length; i++) {
+        invdrs[i].symbol.remove();
+    }
+    invdrs = [];
+    return invdrs;
+}
+
+function createInvader(radius, vector) {
+    return new Invader(
         new Point(
-            xPos,
-            view.size.height
-        )
-    ));
+            getRandomInt(
+                radius,
+                view.size.width - radius
+            ),
+            -radius
+        ),
+        vector
+    );
+}
+
+// Defenders
+function clearDefenders(dfndrs) {
+    for (var i = 0; i < dfndrs.length; i++) {
+        dfndrs[i].symbol.remove();
+    }
+    dfndrs = [];
+    return dfndrs;
+}
+
+function createDefenders(numToCreate) {
+    var dfndrs = [];
+    for (var i = 0; i < numToCreate; i++) {
+        var defenderRangeWidth = (view.size.width / numToCreate);
+        var xPos = (defenderRangeWidth * (i + 1) - (defenderRangeWidth / 2));
+        dfndrs.push(new Defender(
+            new Point(
+                xPos,
+                view.size.height
+            )
+        ));
+    }
+    return dfndrs;
+}
+
+// Bullets
+function clearBullets(bllts) {
+    for (var i = 0; i < bllts.length; i++) {
+        bllts[i].path.remove();
+    }
+    bllts = [];
+    return bllts;
+}
+
+function createBullet(firingPoint, targetPoint) {
+    return new Bullet(
+        firingPoint,
+        targetPoint
+    );
+}
+
+// Stars
+function clearStars(strs) {
+    for (var i = 0; i < strs.length; i++) {
+        strs[i].symbol.remove();
+    }
+    strs = [];
+    return strs;
+}
+
+function createStars() {
+    var strs = [];
+    for (var i = 0; i < NUM_STARS; i++) {
+        var center = Point.random() * view.size;
+        strs.push(new Star(center, i / NUM_STARS));
+    }
+    return strs;
 }
 
 //
@@ -270,25 +362,18 @@ function onFrame() {
 }
 
 function onMouseUp(event) {
-    if (health > 0) {
+    if (isPlayerAlive()) {
         bullets.push(defenders[0].fire(event.point));
     }
 }
 
-function spawnInvaders() {
-    if (framesSinceSpawn == invaderRate && health > 0) {
-        var invader = new Invader(
-            new Point(
-                getRandomInt(
-                    INVADER_RADIUS,
-                    view.size.width - INVADER_RADIUS
-                ),
-                -INVADER_RADIUS
-            ),
-            [0, INVADER_SPEED]
-        );
-        invaders.push(invader);
+function onKeyUp(event) {
+    setupGame(NUM_DEFENDERS, PLAYER_MAX_HEALTH, INVADER_RATE);
+}
 
+function spawnInvaders() {
+    if (framesSinceSpawn == invaderRate && isPlayerAlive()) {
+        invaders.push(createInvader(INVADER_RADIUS, [0, INVADER_SPEED]));
         framesSinceSpawn = 0;
     } else {
         framesSinceSpawn++;
@@ -304,7 +389,8 @@ function moveInvaders() {
             invaders[i].symbol.remove();
             invaders.splice(i, 1);
             invadersAllowedThrough++;
-            health--;
+            if (health > 0)
+                health--;
             i--;
 
             healthText.content = ('Health: ' + health);
@@ -347,9 +433,14 @@ function moveStars() {
     }
 }
 
+function isPlayerAlive() {
+    return (health > 0);
+}
+
 function gameOver() {
     // Player is dead!
     deathText.visible = true;
+
 }
 
 function getRandomInt(min, max) {

@@ -15,6 +15,7 @@ var INVADER_RADIUS = 15;
 var DEFENDER_RADIUS = 20;
 var STAR_RADIUS_MAX = 7;
 var DAT_BOI_RADIUS_MAX = 50;
+var DAT_BOI_VECTOR = [-4, 0];
 
 var NUM_STARS = 20;
 var STAR_VECTOR = (new Point(0.4, 1)) - (new Point(0, 0));
@@ -245,7 +246,7 @@ DatBoi.prototype = {
             this.frameCount = 0;
         }
         this.raster.position = this.point;
-        this.wrapBorders();
+        //this.wrapBorders();
         this.frameCount++;
     },
     
@@ -377,9 +378,9 @@ function clearDemBois(bois) {
 function createDemBois(numToCreate) {
     var bois = [];
     for (var i = 0; i < numToCreate; i++) {
-        var point = new Point(view.size.width + DAT_BOI_RADIUS_MAX, 200);
+        var point = new Point(view.size.width + DAT_BOI_RADIUS_MAX + 1000, 200);
         var scale = 0.25;
-        var vector = [-2, 0];
+        var vector = DAT_BOI_VECTOR;
         bois.push(new DatBoi(point, scale, vector));
     }
     return bois;

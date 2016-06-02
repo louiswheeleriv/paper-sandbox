@@ -166,7 +166,7 @@ function onFrame() {
 function freakOut() {
     for (var i = 0; i < tiles.length; i++) {
         for (var j = 0; j < tiles[i].length; j++) {
-            var clr = (tiles[i][j].colorIndex < HEX_COLORS_RAINBOW.length-2) ? tiles[i][j].colorIndex+1 : 0;
+            var clr = (tiles[i][j].colorIndex < HEX_COLORS_RAINBOW.length-1) ? tiles[i][j].colorIndex+1 : 0;
             tiles[i][j].changeColor(clr);
         }
     }

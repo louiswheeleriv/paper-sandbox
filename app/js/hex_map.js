@@ -110,16 +110,14 @@ function generateHexTiles(rows, cols) {
     var xOffset = (BOARD_WIDTH_PIXELS - view.size.width) / -2;
     var yOffset = (BOARD_HEIGHT_PIXELS - view.size.height) / -2;
     
-    for (var i = 0; i < cols; i++) {
-        for (var j = 0; j < rows; j++) {
-            var x = (i * (HEX_RADIUS * 3/2));
-            var y = (j * (HEX_DIST_A * 2) + ((i % 2) * HEX_DIST_A));
-            
-            x += xOffset;
-            y += yOffset;
+    for (var i = 0; i < rows; i++) {
+        tiles[i] = [];
+        for (var j = 0; j < cols; j++) {
+            var x = (j * (HEX_RADIUS * 3/2)) + xOffset;
+            var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) + yOffset;
             
             var tile = new HexTile(new Point(x, y), colorCounter);
-            tiles.push(tile);
+            tiles[i].push(tile);
             colorCounter = (colorCounter == HEX_COLORS_RAINBOW.length-1) ? 0 : colorCounter + 1;
         }
     }
@@ -131,8 +129,10 @@ function generateHexTiles(rows, cols) {
 
 function onMouseDrag(event) {
     for (var i = 0; i < tiles.length; i++) {
-        tiles[i].point += event.delta;
-        tiles[i].symbol.position = tiles[i].point;
+        for (var j = 0; j < tiles[i].length; j++) {
+            tiles[i][j].point += event.delta;
+            tiles[i][j].symbol.position = tiles[i][j].point;
+        }
     }
 }
 
@@ -165,7 +165,9 @@ function onFrame() {
 
 function freakOut() {
     for (var i = 0; i < tiles.length; i++) {
-        var clr = (tiles[i].colorIndex < HEX_COLORS_RAINBOW.length-2) ? tiles[i].colorIndex+1 : 0;
-        tiles[i].changeColor(clr);
+        for (var j = 0; j < tiles[i].length; j++) {
+            var clr = (tiles[i][j].colorIndex < HEX_COLORS_RAINBOW.length-2) ? tiles[i][j].colorIndex+1 : 0;
+            tiles[i][j].changeColor(clr);
+        }
     }
 }

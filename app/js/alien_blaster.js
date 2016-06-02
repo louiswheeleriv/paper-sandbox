@@ -26,8 +26,8 @@ var BULLET_LENGTH = 30;
 var BULLET_WIDTH = 7;
 
 var NUM_DEFENDERS = 1;
-var PLAYER_MAX_HEALTH = 1;
-var INVADER_RATE = 150;
+var PLAYER_MAX_HEALTH = 3;
+var INVADER_RATE = 100;
 
 //
 // Path definitions for entity appearance

@@ -28,6 +28,11 @@ var HEX_COLORS_RAINBOW = [
     '#9400D3'
 ];
 
+var BOARD_WIDTH_TILES = 12;
+var BOARD_HEIGHT_TILES = 8;
+var BOARD_WIDTH_PIXELS = (1.5 * BOARD_WIDTH_TILES * HEX_RADIUS);
+var BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
+
 //
 // Paths for entity appearance
 //
@@ -84,7 +89,12 @@ function HexTile(pnt, clr) {
 //
 
 HexTile.prototype = {
-    
+    changeColor: function(clr) {
+        this.symbol.remove();
+        this.colorIndex = clr;
+        this.color = HEX_COLORS_RAINBOW[this.colorIndex];
+        this.symbol = hexSymbols[this.colorIndex].place(this.point);
+    }
 }
 
 //
@@ -92,17 +102,21 @@ HexTile.prototype = {
 //
 
 var tiles = [];
-var numCols = view.size.width * 2 / (HEX_RADIUS * 2);
-var numRows = numCols;
 
-generateHexTiles(numRows, numCols);
+generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
 
 function generateHexTiles(rows, cols) {
     var colorCounter = 0;
-    for (var i = 0; i < numCols; i++) {
-        for (var j = 0; j < numRows; j++) {
+    var xOffset = (BOARD_WIDTH_PIXELS - view.size.width) / -2;
+    var yOffset = (BOARD_HEIGHT_PIXELS - view.size.height) / -2;
+    
+    for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
             var x = (i * (HEX_RADIUS * 3/2));
             var y = (j * (HEX_DIST_A * 2) + ((i % 2) * HEX_DIST_A));
+            
+            x += xOffset;
+            y += yOffset;
             
             var tile = new HexTile(new Point(x, y), colorCounter);
             tiles.push(tile);
@@ -122,10 +136,36 @@ function onMouseDrag(event) {
     }
 }
 
+var freakingOut = false;
+
+function onKeyDown(event) {
+    freakingOut = true;
+}
+
+function onKeyUp(event) {
+    freakingOut = false;
+    
+}
+
 //
 // Tick
 //
 
+var freakOutCounter = 0;
+var freakOutInterval = 4;
 function onFrame() {
-    
+    if (freakingOut) {
+        freakOutCounter++;
+        if (freakOutCounter == freakOutInterval) {
+            freakOut();
+            freakOutCounter = 0;
+        }
+    }
+}
+
+function freakOut() {
+    for (var i = 0; i < tiles.length; i++) {
+        var clr = (tiles[i].colorIndex < HEX_COLORS_RAINBOW.length-2) ? tiles[i].colorIndex+1 : 0;
+        tiles[i].changeColor(clr);
+    }
 }

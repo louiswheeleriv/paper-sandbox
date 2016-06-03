@@ -3,6 +3,9 @@
 //
 
 var HEX_RADIUS = 30;
+var BOARD_WIDTH_TILES = 10;
+var BOARD_HEIGHT_TILES = 8;
+
 var HEX_DIST_A = (HEX_RADIUS * (Math.sqrt(3) / 2));
 var HEX_DIST_B = HEX_RADIUS * 0.5;
 
@@ -16,8 +19,7 @@ var HEX_DIST_B = HEX_RADIUS * 0.5;
 
 var HEX_STROKE_WIDTH = 2;
 var HEX_STROKE_COLOR = '#000000';
-var HEX_FILL_COLOR = '#ffffff';
-
+var HEX_COLOR_WHITE = '#ffffff';
 var HEX_COLORS_RAINBOW = [
     '#FF0000',
     '#FF7F00',
@@ -28,8 +30,6 @@ var HEX_COLORS_RAINBOW = [
     '#9400D3'
 ];
 
-var BOARD_WIDTH_TILES = 20;
-var BOARD_HEIGHT_TILES = 16;
 var BOARD_WIDTH_PIXELS = (1.5 * BOARD_WIDTH_TILES * HEX_RADIUS);
 var BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
 
@@ -37,7 +37,7 @@ var BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
 // Paths for entity appearance
 //
 
-var hexPathDef = {
+var hexPathDefWhite = {
     segments: [
         [-HEX_RADIUS, 0],
         [-HEX_DIST_B, -HEX_DIST_A],
@@ -48,17 +48,18 @@ var hexPathDef = {
     ],
     strokeColor: HEX_STROKE_COLOR,
     strokeWidth: HEX_STROKE_WIDTH,
-    fillColor: HEX_FILL_COLOR,
+    fillColor: HEX_COLOR_WHITE,
     closed: true
 };
 
 var hexPathDefs = [];
 for (var i = 0; i < HEX_COLORS_RAINBOW.length; i++) {
-    var hexPathDefColor = _.clone(hexPathDef);
+    var hexPathDefColor = _.clone(hexPathDefWhite);
     hexPathDefColor.fillColor = HEX_COLORS_RAINBOW[i];
     hexPathDefs.push(hexPathDefColor);
 }
 
+var hexPathWhite = new Path(hexPathDefWhite);
 var hexPaths = [];
 for (var i = 0; i < hexPathDefs.length; i++) {
     hexPaths.push(new Path(hexPathDefs[i]));
@@ -68,6 +69,7 @@ for (var i = 0; i < hexPathDefs.length; i++) {
 // Symbols
 //
 
+var hexSymbolWhite = new Symbol(hexPathWhite);
 var hexSymbols = [];
 for (var i = 0; i < hexPaths.length; i++) {
     hexSymbols.push(new Symbol(hexPaths[i]));
@@ -80,8 +82,8 @@ for (var i = 0; i < hexPaths.length; i++) {
 function HexTile(pnt, clr) {
     this.point = pnt;
     this.colorIndex = clr;
-    this.color = HEX_COLORS_RAINBOW[this.colorIndex];
-    this.symbol = hexSymbols[this.colorIndex].place(this.point);
+    this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
+    this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
 }
 
 //
@@ -92,8 +94,12 @@ HexTile.prototype = {
     changeColor: function(clr) {
         this.symbol.remove();
         this.colorIndex = clr;
-        this.color = HEX_COLORS_RAINBOW[this.colorIndex];
-        this.symbol = hexSymbols[this.colorIndex].place(this.point);
+        this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
+        this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
+    },
+    moveByDelta: function(delta) {
+        this.point += delta;
+        this.symbol.position = this.point;
     }
 }
 
@@ -101,26 +107,37 @@ HexTile.prototype = {
 // Setup
 //
 
-var tiles = [];
-
-generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
+var tiles = generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
 
 function generateHexTiles(rows, cols) {
-    var colorCounter = 0;
+    return generateHexTiles(rows, cols, false);
+}
+
+function generateHexTilesRainbow(rows, cols) {
+    return generateHexTiles(rows, cols, true);
+}
+
+function generateHexTiles(rows, cols, isRainbow) {
+    var colorCounter = isRainbow ? 0 : -1;
     var xOffset = (BOARD_WIDTH_PIXELS - view.size.width) / -2;
     var yOffset = (BOARD_HEIGHT_PIXELS - view.size.height) / -2;
     
+    var _tiles = [];
+    
     for (var i = 0; i < rows; i++) {
-        tiles[i] = [];
+        _tiles[i] = [];
         for (var j = 0; j < cols; j++) {
             var x = (j * (HEX_RADIUS * 3/2)) + xOffset;
             var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) + yOffset;
             
             var tile = new HexTile(new Point(x, y), colorCounter);
-            tiles[i].push(tile);
-            colorCounter = (colorCounter == HEX_COLORS_RAINBOW.length-1) ? 0 : colorCounter + 1;
+            _tiles[i].push(tile);
+            if (isRainbow) {
+                colorCounter = (colorCounter == HEX_COLORS_RAINBOW.length-1) ? 0 : colorCounter + 1;
+            }
         }
     }
+    return _tiles;
 }
 
 //
@@ -128,7 +145,17 @@ function generateHexTiles(rows, cols) {
 //
 
 function onMouseDrag(event) {
-    dragTiles(getAdjustedDeltaAtBorders(event.delta));
+    if (!drawing) {
+        dragTiles(getAdjustedDeltaAtBorders(event.delta));
+    } else {
+        colorHex(event.point);
+    }
+}
+
+function onMouseDown(event) {
+    if (drawing) {
+        colorHex(event.point);
+    }
 }
 
 function getAdjustedDeltaAtBorders(delta) {
@@ -150,21 +177,48 @@ function getAdjustedDeltaAtBorders(delta) {
 function dragTiles(delta) {
     for (var i = 0; i < tiles.length; i++) {
         for (var j = 0; j < tiles[i].length; j++) {
-            tiles[i][j].point += delta;
-            tiles[i][j].symbol.position = tiles[i][j].point;
+            tiles[i][j].moveByDelta(delta);
+        }
+    }
+}
+
+function colorHex(point) {
+    //
+    // TODO: Alter this to use more efficient binary search
+    //
+    
+    for (var i = 0; i < tiles[0].length; i++) {
+        var tileCol = tiles[0][i];
+        if (tileCol.point.x - HEX_DIST_A < point.x &&
+            tileCol.point.x + HEX_DIST_A > point.x) {
+            for (var j = 0; j < tiles[0].length; j++) {
+                var tile = tiles[j][i];
+                if (tile.point.y - HEX_DIST_A < point.y &&
+                    tile.point.y + HEX_DIST_A > point.y) {
+                    tile.changeColor(0);
+                    return;
+                }
+            }
         }
     }
 }
 
 var freakingOut = false;
+var drawing = false;
 
 function onKeyDown(event) {
-    freakingOut = true;
+    if (event.key == 'f') {
+        freakingOut = true;
+    }
 }
 
 function onKeyUp(event) {
-    freakingOut = false;
-    
+    if (event.key == 'f') {
+        freakingOut = false;
+    } else if (event.key == 'd') {
+        drawing = !drawing;
+        console.log('drawing = ' + drawing);
+    }
 }
 
 //

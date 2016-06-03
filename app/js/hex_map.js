@@ -28,8 +28,8 @@ var HEX_COLORS_RAINBOW = [
     '#9400D3'
 ];
 
-var BOARD_WIDTH_TILES = 12;
-var BOARD_HEIGHT_TILES = 8;
+var BOARD_WIDTH_TILES = 20;
+var BOARD_HEIGHT_TILES = 16;
 var BOARD_WIDTH_PIXELS = (1.5 * BOARD_WIDTH_TILES * HEX_RADIUS);
 var BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
 
@@ -128,9 +128,29 @@ function generateHexTiles(rows, cols) {
 //
 
 function onMouseDrag(event) {
+    dragTiles(getAdjustedDeltaAtBorders(event.delta));
+}
+
+function getAdjustedDeltaAtBorders(delta) {
+    var topLeftTile = tiles[0][0];
+    var topRightTile = tiles[0][tiles[0].length-1];
+    var bottomLeftTile = tiles[tiles.length-1][0];
+    
+    if ((delta.x > 0 && topLeftTile.point.x > HEX_RADIUS) ||
+        (delta.x < 0 && topRightTile.point.x < view.size.width - HEX_RADIUS)) {
+        delta.x = 0;
+    }
+    if ((delta.y > 0 && topLeftTile.point.y > HEX_RADIUS) ||
+        (delta.y < 0 && bottomLeftTile.point.y < view.size.height - (HEX_RADIUS*2))) {
+        delta.y = 0;
+    }
+    return delta;
+}
+
+function dragTiles(delta) {
     for (var i = 0; i < tiles.length; i++) {
         for (var j = 0; j < tiles[i].length; j++) {
-            tiles[i][j].point += event.delta;
+            tiles[i][j].point += delta;
             tiles[i][j].symbol.position = tiles[i][j].point;
         }
     }

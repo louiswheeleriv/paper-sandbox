@@ -107,6 +107,20 @@ HexTile.prototype = {
 // Setup
 //
 
+/*
+var tileDefs = [
+    [
+        {colorIndex: 1},
+        {colorIndex: 2}
+    ],
+    [
+        {colorIndex: 3},
+        {colorIndex: 4}
+    ]
+];
+var tiles = generateHexTilesWithMap(tileDefs);
+*/
+
 var tiles = generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
 
 function generateHexTiles(rows, cols) {
@@ -140,6 +154,28 @@ function generateHexTiles(rows, cols, isRainbow) {
     return _tiles;
 }
 
+function generateHexTilesWithMap(tileDefs) {
+    var widthPixels = (1.5 * tileDefs[0].length * HEX_RADIUS);
+    var heightPixels = (tileDefs.length * 2 * HEX_DIST_A);
+    
+    var xOffset = (widthPixels - view.size.width) / -2;
+    var yOffset = (heightPixels - view.size.height) / -2;
+    
+    var _tiles = [];
+    
+    for (var i = 0; i < tileDefs.length; i++) {
+        _tiles[i] = [];
+        for (var j = 0; j < tileDefs[0].length; j++) {
+            var x = (j * (HEX_RADIUS * 3/2)) + xOffset;
+            var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) + yOffset;
+            
+            var tile = new HexTile(new Point(x, y), tileDefs[i][j].colorIndex);
+            _tiles[i].push(tile);
+        }
+    }
+    return _tiles;
+}
+
 //
 // Handle user input
 //
@@ -148,13 +184,13 @@ function onMouseDrag(event) {
     if (!drawing) {
         dragTiles(getAdjustedDeltaAtBorders(event.delta));
     } else {
-        colorHex(event.point);
+        colorHex(event.point, 0);
     }
 }
 
 function onMouseDown(event) {
     if (drawing) {
-        colorHex(event.point);
+        colorHex(event.point, 0);
     }
 }
 
@@ -182,20 +218,20 @@ function dragTiles(delta) {
     }
 }
 
-function colorHex(point) {
+function colorHex(pnt, clr) {
     //
     // TODO: Alter this to use more efficient binary search
     //
     
     for (var i = 0; i < tiles[0].length; i++) {
         var tileCol = tiles[0][i];
-        if (tileCol.point.x - HEX_DIST_A < point.x &&
-            tileCol.point.x + HEX_DIST_A > point.x) {
+        if (tileCol.point.x - HEX_DIST_A < pnt.x &&
+            tileCol.point.x + HEX_DIST_A > pnt.x) {
             for (var j = 0; j < tiles[0].length; j++) {
                 var tile = tiles[j][i];
-                if (tile.point.y - HEX_DIST_A < point.y &&
-                    tile.point.y + HEX_DIST_A > point.y) {
-                    tile.changeColor(0);
+                if (tile.point.y - HEX_DIST_A < pnt.y &&
+                    tile.point.y + HEX_DIST_A > pnt.y) {
+                    tile.changeColor(clr);
                     return;
                 }
             }

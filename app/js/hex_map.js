@@ -2,8 +2,8 @@
 // Constants
 //
 
-var HEX_RADIUS = 30;
-var BOARD_WIDTH_TILES = 10;
+var HEX_RADIUS = 25;
+var BOARD_WIDTH_TILES = 20;
 var BOARD_HEIGHT_TILES = 8;
 
 var HEX_DIST_A = (HEX_RADIUS * (Math.sqrt(3) / 2));
@@ -18,7 +18,7 @@ var HEX_DIST_B = HEX_RADIUS * 0.5;
 //      x      x
 
 var HEX_STROKE_WIDTH = 2;
-var HEX_STROKE_COLOR = '#000000';
+var HEX_COLOR_BLACK = '#000000';
 var HEX_COLOR_WHITE = '#ffffff';
 var HEX_COLORS_RAINBOW = [
     '#FF0000',
@@ -46,7 +46,7 @@ var hexPathDefWhite = {
         [HEX_DIST_B, HEX_DIST_A],
         [-HEX_DIST_B, HEX_DIST_A]
     ],
-    strokeColor: HEX_STROKE_COLOR,
+    strokeColor: HEX_COLOR_BLACK,
     strokeWidth: HEX_STROKE_WIDTH,
     fillColor: HEX_COLOR_WHITE,
     closed: true
@@ -135,15 +135,15 @@ function generateHexTiles(rows, cols, isRainbow) {
     var colorCounter = isRainbow ? 0 : -1;
     var xOffset = (BOARD_WIDTH_PIXELS - view.size.width) / -2;
     var yOffset = (BOARD_HEIGHT_PIXELS - view.size.height) / -2;
-    
+
     var _tiles = [];
-    
+
     for (var i = 0; i < rows; i++) {
         _tiles[i] = [];
         for (var j = 0; j < cols; j++) {
             var x = (j * (HEX_RADIUS * 3/2)) + xOffset;
             var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) + yOffset;
-            
+
             var tile = new HexTile(new Point(x, y), colorCounter);
             _tiles[i].push(tile);
             if (isRainbow) {
@@ -157,18 +157,18 @@ function generateHexTiles(rows, cols, isRainbow) {
 function generateHexTilesWithMap(tileDefs) {
     var widthPixels = (1.5 * tileDefs[0].length * HEX_RADIUS);
     var heightPixels = (tileDefs.length * 2 * HEX_DIST_A);
-    
+
     var xOffset = (widthPixels - view.size.width) / -2;
     var yOffset = (heightPixels - view.size.height) / -2;
-    
+
     var _tiles = [];
-    
+
     for (var i = 0; i < tileDefs.length; i++) {
         _tiles[i] = [];
         for (var j = 0; j < tileDefs[0].length; j++) {
             var x = (j * (HEX_RADIUS * 3/2)) + xOffset;
             var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) + yOffset;
-            
+
             var tile = new HexTile(new Point(x, y), tileDefs[i][j].colorIndex);
             _tiles[i].push(tile);
         }
@@ -198,7 +198,7 @@ function getAdjustedDeltaAtBorders(delta) {
     var topLeftTile = tiles[0][0];
     var topRightTile = tiles[0][tiles[0].length-1];
     var bottomLeftTile = tiles[tiles.length-1][0];
-    
+
     if ((delta.x > 0 && topLeftTile.point.x > HEX_RADIUS) ||
         (delta.x < 0 && topRightTile.point.x < view.size.width - HEX_RADIUS)) {
         delta.x = 0;
@@ -219,23 +219,53 @@ function dragTiles(delta) {
 }
 
 function colorHex(pnt, clr) {
-    //
-    // TODO: Alter this to use more efficient binary search
-    //
-    
-    for (var i = 0; i < tiles[0].length; i++) {
-        var tileCol = tiles[0][i];
-        if (tileCol.point.x - HEX_DIST_A < pnt.x &&
-            tileCol.point.x + HEX_DIST_A > pnt.x) {
-            for (var j = 0; j < tiles[0].length; j++) {
-                var tile = tiles[j][i];
-                if (tile.point.y - HEX_DIST_A < pnt.y &&
-                    tile.point.y + HEX_DIST_A > pnt.y) {
-                    tile.changeColor(clr);
-                    return;
-                }
-            }
+    findClickedTile(pnt).changeColor(clr);
+}
+
+function findClickedTile(pnt) {
+    return findClickCol(pnt, tiles);
+}
+
+function findClickCol(pnt, _tiles) {
+    // Find middle col from tileCols
+    var middleColIndex = Math.floor(_tiles[0].length / 2);
+    var middleCol = _tiles[0][middleColIndex];
+    var tileCols = [];
+
+    if (pnt.x < (middleCol.point.x - HEX_RADIUS)) {
+        // Click is in left half
+        for (var i = 0; i < _tiles.length; i++) {
+            tileCols.push(_tiles[i].slice(0, middleColIndex));
         }
+    } else if (pnt.x > (middleCol.point.x + HEX_RADIUS)) {
+        // Click is in right half
+        for (var i = 0; i < _tiles.length; i++) {
+            tileCols.push(_tiles[i].slice(middleColIndex+1, _tiles[0].length));
+        }
+    } else {
+        // Click is in this column!
+        for (var i = 0; i < _tiles.length; i++) {
+            tileCols.push(_tiles[i][middleColIndex]);
+        }
+        return findClickRow(pnt, tileCols);
+    }
+    return findClickCol(pnt, tileCols);
+}
+
+function findClickRow(pnt, tileCol) {
+    // Find middle tile from tileCol
+    var middleTileIndex = Math.floor(tileCol.length / 2);
+    var middleTile = tileCol[middleTileIndex];
+
+    if (pnt.y < (middleTile.point.y - HEX_DIST_A)) {
+        // Click is in top half
+        return findClickRow(pnt, tileCol.slice(0, middleTileIndex));
+    } else if (pnt.y > (middleTile.point.y + HEX_DIST_A)) {
+        // Click is in bottom half
+        return findClickRow(pnt, tileCol.slice(middleTileIndex+1, tileCol.length));
+    } else {
+        // Click is in this tile!
+        return middleTile;
     }
 }
 

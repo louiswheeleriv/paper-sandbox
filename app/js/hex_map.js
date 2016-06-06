@@ -4,7 +4,7 @@
 
 var HEX_RADIUS = 25;
 var BOARD_WIDTH_TILES = 20;
-var BOARD_HEIGHT_TILES = 8;
+var BOARD_HEIGHT_TILES = 14;
 
 var HEX_DIST_A = (HEX_RADIUS * (Math.sqrt(3) / 2));
 var HEX_DIST_B = HEX_RADIUS * 0.5;
@@ -53,17 +53,17 @@ var hexPathDefWhite = {
 };
 
 var hexPathDefs = [];
-for (var i = 0; i < HEX_COLORS_RAINBOW.length; i++) {
+_.each(HEX_COLORS_RAINBOW, function(color) {
     var hexPathDefColor = _.clone(hexPathDefWhite);
-    hexPathDefColor.fillColor = HEX_COLORS_RAINBOW[i];
+    hexPathDefColor.fillColor = color;
     hexPathDefs.push(hexPathDefColor);
-}
+});
 
 var hexPathWhite = new Path(hexPathDefWhite);
 var hexPaths = [];
-for (var i = 0; i < hexPathDefs.length; i++) {
-    hexPaths.push(new Path(hexPathDefs[i]));
-}
+_.each(hexPathDefs, function(hexPathDef) {
+    hexPaths.push(new Path(hexPathDef));
+});
 
 //
 // Symbols
@@ -71,9 +71,9 @@ for (var i = 0; i < hexPathDefs.length; i++) {
 
 var hexSymbolWhite = new Symbol(hexPathWhite);
 var hexSymbols = [];
-for (var i = 0; i < hexPaths.length; i++) {
-    hexSymbols.push(new Symbol(hexPaths[i]));
-}
+_.each(hexPaths, function(hexPath) {
+    hexSymbols.push(new Symbol(hexPath));
+})
 
 //
 // Constructors
@@ -182,7 +182,7 @@ function generateHexTilesWithMap(tileDefs) {
 
 function onMouseDrag(event) {
     if (!drawing) {
-        dragTiles(getAdjustedDeltaAtBorders(event.delta));
+        dragTiles(tiles, getAdjustedDeltaAtBorders(event.delta));
     } else {
         colorHex(event.point, 0);
     }
@@ -210,12 +210,12 @@ function getAdjustedDeltaAtBorders(delta) {
     return delta;
 }
 
-function dragTiles(delta) {
-    for (var i = 0; i < tiles.length; i++) {
-        for (var j = 0; j < tiles[i].length; j++) {
-            tiles[i][j].moveByDelta(delta);
-        }
-    }
+function dragTiles(_tiles, delta) {
+    _.each(_tiles, function(tileRow) {
+        _.each(tileRow, function(tile) {
+            tile.moveByDelta(delta);
+        });
+    });
 }
 
 function colorHex(pnt, clr) {
@@ -234,19 +234,19 @@ function findClickCol(pnt, _tiles) {
 
     if (pnt.x < (middleCol.point.x - HEX_RADIUS)) {
         // Click is in left half
-        for (var i = 0; i < _tiles.length; i++) {
-            tileCols.push(_tiles[i].slice(0, middleColIndex));
-        }
+        _.each(_tiles, function(tileRow) {
+            tileCols.push(tileRow.slice(0, middleColIndex));
+        });
     } else if (pnt.x > (middleCol.point.x + HEX_RADIUS)) {
         // Click is in right half
-        for (var i = 0; i < _tiles.length; i++) {
-            tileCols.push(_tiles[i].slice(middleColIndex+1, _tiles[0].length));
-        }
+        _.each(_tiles, function(tileRow) {
+            tileCols.push(tileRow.slice(middleColIndex+1, tileRow.length));
+        });
     } else {
         // Click is in this column!
-        for (var i = 0; i < _tiles.length; i++) {
-            tileCols.push(_tiles[i][middleColIndex]);
-        }
+        _.each(_tiles, function(tileRow) {
+            tileCols.push(tileRow[middleColIndex]);
+        });
         return findClickRow(pnt, tileCols);
     }
     return findClickCol(pnt, tileCols);
@@ -284,6 +284,8 @@ function onKeyUp(event) {
     } else if (event.key == 'd') {
         drawing = !drawing;
         console.log('drawing = ' + drawing);
+    } else if (event.key == 'r') {
+        resetHexes(tiles);
     }
 }
 
@@ -297,17 +299,25 @@ function onFrame() {
     if (freakingOut) {
         freakOutCounter++;
         if (freakOutCounter == freakOutInterval) {
-            freakOut();
+            freakOut(tiles);
             freakOutCounter = 0;
         }
     }
 }
 
-function freakOut() {
-    for (var i = 0; i < tiles.length; i++) {
-        for (var j = 0; j < tiles[i].length; j++) {
-            var clr = (tiles[i][j].colorIndex < HEX_COLORS_RAINBOW.length-1) ? tiles[i][j].colorIndex+1 : 0;
-            tiles[i][j].changeColor(clr);
-        }
-    }
+function freakOut(_tiles) {
+    _.each(_tiles, function(tileRow) {
+        _.each(tileRow, function(tile) {
+            var clr = (tile.colorIndex < HEX_COLORS_RAINBOW.length-1) ? tile.colorIndex+1 : 0;
+            tile.changeColor(clr);
+        });
+    });
+}
+
+function resetHexes(_tiles) {
+    _.each(_tiles, function(tileRow) {
+        _.each(tileRow, function(tile) {
+            tile.changeColor(-1);
+        });
+    });
 }

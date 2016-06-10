@@ -83,6 +83,7 @@ function HexTile(pnt, clr) {
     this.point = pnt;
     this.colorIndex = clr;
     this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
+    this.hovered = false;
     this.selected = false;
     this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
 }
@@ -92,6 +93,12 @@ function HexTile(pnt, clr) {
 //
 
 HexTile.prototype = {
+    changeColorAndScale: function(clr, scl) {
+        this.changeColor(clr);
+        if (scl != 1) {
+            this.changeScale(scl);
+        }
+    },
     changeColor: function(clr) {
         this.symbol.remove();
         this.colorIndex = clr;
@@ -105,11 +112,19 @@ HexTile.prototype = {
         this.point += delta;
         this.symbol.position = this.point;
     },
+    toggleHovered: function(hov) {
+        this.hovered = hov;
+        if (this.hovered) {
+            this.changeColorAndScale(0, 1.2);
+        } else {
+            this.changeColor(-1);
+        }
+    },
     toggleSelected: function(sel) {
         this.selected = sel;
+        this.hovered = false;
         if (this.selected) {
-            this.changeColor(0);
-            this.changeScale(1.2);
+            this.changeColorAndScale(4, 1.2);
         } else {
             this.changeColor(-1);
         }
@@ -135,7 +150,16 @@ var tiles = generateHexTilesWithMap(tileDefs);
 */
 
 var tiles = generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
+var hoveredTile;
 var selectedTile;
+
+var freakingOut = false;
+var modes = {
+    dragging: 'DRAG',
+    selecting: 'SELECT',
+    drawing: 'DRAW'
+};
+var mode = modes.dragging;
 
 function generateHexTiles(rows, cols) {
     return generateHexTiles(rows, cols, false);
@@ -195,29 +219,51 @@ function generateHexTilesWithMap(tileDefs) {
 //
 
 function onMouseDrag(event) {
-    if (!drawing) {
+    if (mode == modes.dragging) {
         dragTiles(tiles, getAdjustedDeltaAtBorders(event.delta));
-    } else {
+    } else if (mode == modes.drawing) {
         colorHex(event.point, 0);
     }
 }
 
 function onMouseDown(event) {
-    if (drawing) {
+    if (mode == modes.drawing) {
         colorHex(event.point, 0);
+    } else if (mode == modes.selecting) {
+        var tile = findClickedTile(event.point);
+        selectTile(tile);
     }
 }
 
 function onMouseMove(event) {
-    if (!drawing) {
+    if (mode == modes.selecting && selectedTile == null) {
         var tile = findClickedTile(event.point);
-        if (selectedTile != tile) {
-            if (selectedTile != null) {
-                selectedTile.toggleSelected(false);
-            }
-            tile.toggleSelected(true);
-            selectedTile = tile;
+        hoverTile(tile);
+    }
+}
+
+function selectTile(tile) {
+    if (selectedTile != tile) {
+        if (selectedTile != null) {
+            selectedTile.toggleSelected(false);
         }
+        tile.toggleSelected(true);
+        selectedTile = tile;
+        hoveredTile = null;
+    }
+    if (hoveredTile != null && hoveredTile != selectedTile) {
+        hoveredTile.toggleHovered(false);
+        hoveredTile = null;
+    }
+}
+
+function hoverTile(tile) {
+    if (hoveredTile != tile) {
+        if (hoveredTile != null) {
+            hoveredTile.toggleHovered(false);
+        }
+        tile.toggleHovered(true);
+        hoveredTile = tile;
     }
 }
 
@@ -297,9 +343,6 @@ function findClickRow(pnt, tileCol) {
     }
 }
 
-var freakingOut = false;
-var drawing = false;
-
 function onKeyDown(event) {
     if (event.key == 'f') {
         freakingOut = true;
@@ -307,16 +350,26 @@ function onKeyDown(event) {
 }
 
 function onKeyUp(event) {
-    if (event.key == 'f') {
-        freakingOut = false;
-    } else if (event.key == 'd') {
-        drawing = !drawing;
-        if (drawing && selectedTile != null) {
-            // De-select selected tile
-            selectedTile.changeColor(-1);
+    if (event.key == 'a') {
+        mode = modes.dragging;
+        console.log('mode = dragging');
+    } else if (event.key == 's') {
+        mode = modes.selecting;
+        console.log('mode = selecting');
+        if (selectedTile != null) {
+            selectedTile.toggleSelected(false);
             selectedTile = null;
         }
-        console.log('drawing = ' + drawing);
+    } else if (event.key == 'd') {
+        mode = modes.drawing;
+        console.log('mode = drawing');
+        if (hoveredTile != null) {
+            // De-select selected tile
+            hoveredTile.toggleHovered(false);
+            hoveredTile = null;
+        }
+    } else if (event.key == 'f') {
+        freakingOut = false;
     } else if (event.key == 'r') {
         resetHexes(tiles);
     }
@@ -353,4 +406,6 @@ function resetHexes(_tiles) {
             tile.changeColor(-1);
         });
     });
+    hoveredTile = null;
+    selectedTile = null;
 }

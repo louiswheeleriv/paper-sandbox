@@ -83,6 +83,7 @@ function HexTile(pnt, clr) {
     this.point = pnt;
     this.colorIndex = clr;
     this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
+    this.selected = false;
     this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
 }
 
@@ -97,9 +98,21 @@ HexTile.prototype = {
         this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
         this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
     },
+    changeScale: function(scl) {
+        this.symbol.scale(scl);
+    },
     moveByDelta: function(delta) {
         this.point += delta;
         this.symbol.position = this.point;
+    },
+    toggleSelected: function(sel) {
+        this.selected = sel;
+        if (this.selected) {
+            this.changeColor(0);
+            this.changeScale(1.2);
+        } else {
+            this.changeColor(-1);
+        }
     }
 }
 
@@ -122,6 +135,7 @@ var tiles = generateHexTilesWithMap(tileDefs);
 */
 
 var tiles = generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
+var selectedTile;
 
 function generateHexTiles(rows, cols) {
     return generateHexTiles(rows, cols, false);
@@ -194,6 +208,19 @@ function onMouseDown(event) {
     }
 }
 
+function onMouseMove(event) {
+    if (!drawing) {
+        var tile = findClickedTile(event.point);
+        if (selectedTile != tile) {
+            if (selectedTile != null) {
+                selectedTile.toggleSelected(false);
+            }
+            tile.toggleSelected(true);
+            selectedTile = tile;
+        }
+    }
+}
+
 function getAdjustedDeltaAtBorders(delta) {
     var topLeftTile = tiles[0][0];
     var topRightTile = tiles[0][tiles[0].length-1];
@@ -223,6 +250,7 @@ function colorHex(pnt, clr) {
 }
 
 function findClickedTile(pnt) {
+    // Recursively find clicked tile
     return findClickCol(pnt, tiles);
 }
 
@@ -283,6 +311,11 @@ function onKeyUp(event) {
         freakingOut = false;
     } else if (event.key == 'd') {
         drawing = !drawing;
+        if (drawing && selectedTile != null) {
+            // De-select selected tile
+            selectedTile.changeColor(-1);
+            selectedTile = null;
+        }
         console.log('drawing = ' + drawing);
     } else if (event.key == 'r') {
         resetHexes(tiles);

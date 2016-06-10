@@ -150,10 +150,11 @@ var tiles = generateHexTilesWithMap(tileDefs);
 */
 
 var tiles = generateHexTiles(BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES);
+
 var hoveredTile;
 var selectedTile;
-
 var freakingOut = false;
+
 var modes = {
     dragging: 'DRAG',
     selecting: 'SELECT',
@@ -241,6 +242,42 @@ function onMouseMove(event) {
         hoverTile(tile);
     }
 }
+
+function onKeyDown(event) {
+    if (event.key == 'f') {
+        freakingOut = true;
+    }
+}
+
+function onKeyUp(event) {
+    switch(event.key) {
+        case 'a':
+            switchMode(modes.dragging);
+            break;
+        case 's':
+            switchMode(modes.selecting);
+            break;
+        case 'd':
+            switchMode(modes.drawing);
+            break;
+        case 'f':
+            freakingOut = false;
+            break;
+        case 'z':
+            // zoom in
+            break;
+        case 'x':
+            // zoom out
+            break;
+        case 'r':
+            resetHexes(tiles);
+            break;
+    }
+}
+
+//
+// Methods for interacting with tiles
+//
 
 function selectTile(tile) {
     if (selectedTile != tile) {
@@ -343,35 +380,21 @@ function findClickRow(pnt, tileCol) {
     }
 }
 
-function onKeyDown(event) {
-    if (event.key == 'f') {
-        freakingOut = true;
-    }
-}
-
-function onKeyUp(event) {
-    if (event.key == 'a') {
-        mode = modes.dragging;
-        console.log('mode = dragging');
-    } else if (event.key == 's') {
-        mode = modes.selecting;
-        console.log('mode = selecting');
-        if (selectedTile != null) {
-            selectedTile.toggleSelected(false);
-            selectedTile = null;
-        }
-    } else if (event.key == 'd') {
-        mode = modes.drawing;
-        console.log('mode = drawing');
+function switchMode(m) {
+    mode = m;
+    console.log('mode = ' + mode);
+    
+    if (mode != modes.selecting) {
         if (hoveredTile != null) {
             // De-select selected tile
             hoveredTile.toggleHovered(false);
             hoveredTile = null;
         }
-    } else if (event.key == 'f') {
-        freakingOut = false;
-    } else if (event.key == 'r') {
-        resetHexes(tiles);
+    } else {
+        if (selectedTile != null) {
+            selectedTile.toggleSelected(false);
+            selectedTile = null;
+        }
     }
 }
 

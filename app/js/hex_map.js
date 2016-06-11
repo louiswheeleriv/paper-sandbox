@@ -81,10 +81,15 @@ _.each(hexPaths, function(hexPath) {
 
 function HexTile(pnt, clr) {
     this.point = pnt;
+
     this.colorIndex = clr;
     this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
+    this.prevColorIndex = null;
+    this.prevColor = null;
+
     this.hovered = false;
     this.selected = false;
+
     this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
 }
 
@@ -101,6 +106,8 @@ HexTile.prototype = {
     },
     changeColor: function(clr) {
         this.symbol.remove();
+        this.prevColorIndex = this.colorIndex;
+        this.prevColor = this.color;
         this.colorIndex = clr;
         this.color = (this.colorIndex > -1) ? HEX_COLORS_RAINBOW[this.colorIndex] : HEX_COLOR_WHITE;
         this.symbol = (this.colorIndex > -1) ? hexSymbols[this.colorIndex].place(this.point) : hexSymbolWhite.place(this.point);
@@ -117,16 +124,24 @@ HexTile.prototype = {
         if (this.hovered) {
             this.changeColorAndScale(0, 1.2);
         } else {
-            this.changeColor(-1);
+            this.changeColor(this.prevColorIndex);
         }
     },
     toggleSelected: function(sel) {
         this.selected = sel;
+        var prevClrIdx;
+        if (this.hovered) {
+            // Keep track of previous color before hover
+            prevClrIdx = this.prevColorIndex;
+        }
         this.hovered = false;
         if (this.selected) {
             this.changeColorAndScale(4, 1.2);
+            if (prevClrIdx != null) {
+                this.prevColorIndex = prevClrIdx;
+            }
         } else {
-            this.changeColor(-1);
+            this.changeColor(this.prevColorIndex);
         }
     }
 }
@@ -232,14 +247,18 @@ function onMouseDown(event) {
         colorHex(event.point, 0);
     } else if (mode == modes.selecting) {
         var tile = findClickedTile(event.point);
-        selectTile(tile);
+        if (tile != null) {
+            selectTile(tile);
+        }
     }
 }
 
 function onMouseMove(event) {
     if (mode == modes.selecting && selectedTile == null) {
         var tile = findClickedTile(event.point);
-        hoverTile(tile);
+        if (tile != null) {
+            hoverTile(tile);
+        }
     }
 }
 
@@ -329,7 +348,10 @@ function dragTiles(_tiles, delta) {
 }
 
 function colorHex(pnt, clr) {
-    findClickedTile(pnt).changeColor(clr);
+    var tile = findClickedTile(pnt);
+    if (tile != null) {
+        tile.changeColor(clr);
+    }
 }
 
 function findClickedTile(pnt) {
@@ -343,24 +365,28 @@ function findClickCol(pnt, _tiles) {
     var middleCol = _tiles[0][middleColIndex];
     var tileCols = [];
 
-    if (pnt.x < (middleCol.point.x - HEX_RADIUS)) {
-        // Click is in left half
-        _.each(_tiles, function(tileRow) {
-            tileCols.push(tileRow.slice(0, middleColIndex));
-        });
-    } else if (pnt.x > (middleCol.point.x + HEX_RADIUS)) {
-        // Click is in right half
-        _.each(_tiles, function(tileRow) {
-            tileCols.push(tileRow.slice(middleColIndex+1, tileRow.length));
-        });
-    } else {
-        // Click is in this column!
-        _.each(_tiles, function(tileRow) {
-            tileCols.push(tileRow[middleColIndex]);
-        });
-        return findClickRow(pnt, tileCols);
+    try {
+        if (pnt.x < (middleCol.point.x - HEX_RADIUS)) {
+            // Click is in left half
+            _.each(_tiles, function(tileRow) {
+                tileCols.push(tileRow.slice(0, middleColIndex));
+            });
+        } else if (pnt.x > (middleCol.point.x + HEX_RADIUS)) {
+            // Click is in right half
+            _.each(_tiles, function(tileRow) {
+                tileCols.push(tileRow.slice(middleColIndex+1, tileRow.length));
+            });
+        } else {
+            // Click is in this column!
+            _.each(_tiles, function(tileRow) {
+                tileCols.push(tileRow[middleColIndex]);
+            });
+            return findClickRow(pnt, tileCols);
+        }
+        return findClickCol(pnt, tileCols);
+    } catch (err) {
+        return null;
     }
-    return findClickCol(pnt, tileCols);
 }
 
 function findClickRow(pnt, tileCol) {
@@ -368,22 +394,26 @@ function findClickRow(pnt, tileCol) {
     var middleTileIndex = Math.floor(tileCol.length / 2);
     var middleTile = tileCol[middleTileIndex];
 
-    if (pnt.y < (middleTile.point.y - HEX_DIST_A)) {
-        // Click is in top half
-        return findClickRow(pnt, tileCol.slice(0, middleTileIndex));
-    } else if (pnt.y > (middleTile.point.y + HEX_DIST_A)) {
-        // Click is in bottom half
-        return findClickRow(pnt, tileCol.slice(middleTileIndex+1, tileCol.length));
-    } else {
-        // Click is in this tile!
-        return middleTile;
+    try {
+        if (pnt.y < (middleTile.point.y - HEX_DIST_A)) {
+            // Click is in top half
+            return findClickRow(pnt, tileCol.slice(0, middleTileIndex));
+        } else if (pnt.y > (middleTile.point.y + HEX_DIST_A)) {
+            // Click is in bottom half
+            return findClickRow(pnt, tileCol.slice(middleTileIndex+1, tileCol.length));
+        } else {
+            // Click is in this tile!
+            return middleTile;
+        }
+    } catch (err) {
+        return null;
     }
 }
 
 function switchMode(m) {
     mode = m;
     console.log('mode = ' + mode);
-    
+
     if (mode != modes.selecting) {
         if (hoveredTile != null) {
             // De-select selected tile
@@ -403,7 +433,7 @@ function switchMode(m) {
 //
 
 var freakOutCounter = 0;
-var freakOutInterval = 4;
+var freakOutInterval = 7;
 function onFrame() {
     if (freakingOut) {
         freakOutCounter++;

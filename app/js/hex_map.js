@@ -3,6 +3,9 @@
 //
 
 var HEX_RADIUS = 25;
+var HEX_RADIUS_STEP = 5;
+var HEX_RADIUS_MIN = 5;
+var HEX_RADIUS_MAX = 40;
 var BOARD_WIDTH_TILES = 20;
 var BOARD_HEIGHT_TILES = 14;
 
@@ -230,6 +233,102 @@ function generateHexTilesWithMap(tileDefs) {
     return _tiles;
 }
 
+function zoomHexTiles(_tiles, hexRadius) {
+    var centerPoint = new Point(view.size.width / 2, view.size.height / 2);
+    var zoomTile = findClickedTile(centerPoint);
+
+    var zoomTileRowIdx;
+    var zoomTileColIdx;
+
+    for (var i = 0; i < _tiles.length; i++) {
+        if (zoomTileRowIdx == null &&
+            zoomTile.point.y - HEX_DIST_A <= _tiles[i][0].point.y &&
+            zoomTile.point.y + HEX_DIST_A >= _tiles[i][0].point.y) {
+            zoomTileRowIdx = i;
+        }
+        for (var j = 0; j < _tiles[i].length; j++) {
+            _tiles[i][j].symbol.remove();
+            if (zoomTileColIdx == null &&
+                zoomTile.point.x - HEX_RADIUS <= _tiles[i][j].point.x &&
+                zoomTile.point.x + HEX_RADIUS >= _tiles[i][j].point.x) {
+                zoomTileColIdx = j;
+            }
+        }
+    }
+
+    if (hoveredTile != null) {
+        hoveredTile.toggleHovered(false);
+        hoveredTile.symbol.remove();
+        hoveredTile = null;
+    }
+    if (selectedTile != null) {
+        selectedTile.toggleSelected(false);
+        selectedTile.symbol.remove();
+        selectedTile = null;
+    }
+
+    var numRows = _tiles.length;
+    var numCols = _tiles[0].length;
+
+    HEX_RADIUS = hexRadius;
+    HEX_DIST_A = (HEX_RADIUS * (Math.sqrt(3) / 2));
+    HEX_DIST_B = HEX_RADIUS * 0.5;
+    BOARD_WIDTH_PIXELS = (1.5 * BOARD_WIDTH_TILES * HEX_RADIUS);
+    BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
+
+    // Recalculate paths and symbols
+    hexPathDefWhite = {
+        segments: [
+            [-HEX_RADIUS, 0],
+            [-HEX_DIST_B, -HEX_DIST_A],
+            [HEX_DIST_B, -HEX_DIST_A],
+            [HEX_RADIUS, 0],
+            [HEX_DIST_B, HEX_DIST_A],
+            [-HEX_DIST_B, HEX_DIST_A]
+        ],
+        strokeColor: HEX_COLOR_BLACK,
+        strokeWidth: HEX_STROKE_WIDTH,
+        fillColor: HEX_COLOR_WHITE,
+        closed: true
+    };
+
+    hexPathDefs = [];
+    _.each(HEX_COLORS_RAINBOW, function(color) {
+        var hexPathDefColor = _.clone(hexPathDefWhite);
+        hexPathDefColor.fillColor = color;
+        hexPathDefs.push(hexPathDefColor);
+    });
+
+    hexPathWhite = new Path(hexPathDefWhite);
+    hexPaths = [];
+    _.each(hexPathDefs, function(hexPathDef) {
+        hexPaths.push(new Path(hexPathDef));
+    });
+
+    hexSymbolWhite = new Symbol(hexPathWhite);
+    hexSymbols = [];
+    _.each(hexPaths, function(hexPath) {
+        hexSymbols.push(new Symbol(hexPath));
+    })
+
+    var xOffset = (1.5 * HEX_RADIUS * zoomTileColIdx) - centerPoint.x;
+    var yOffset = (2 * HEX_DIST_A * zoomTileRowIdx) - centerPoint.y;
+
+    var outputTiles = [];
+    for (var i = 0; i < numRows; i++) {
+        outputTiles[i] = [];
+        for (var j = 0; j < numCols; j++) {
+            var x = (j * (HEX_RADIUS * 3/2)) - xOffset;
+            var y = (i * (HEX_DIST_A * 2) + ((j % 2) * HEX_DIST_A)) - yOffset;
+
+            var tile = new HexTile(new Point(x, y), _tiles[i][j].colorIndex);
+            outputTiles[i].push(tile);
+        }
+    }
+
+    return outputTiles;
+}
+
 //
 // Handle user input
 //
@@ -283,10 +382,14 @@ function onKeyUp(event) {
             freakingOut = false;
             break;
         case 'z':
-            // zoom in
+            if (HEX_RADIUS + HEX_RADIUS_STEP <= HEX_RADIUS_MAX) {
+                tiles = zoomHexTiles(tiles, HEX_RADIUS + HEX_RADIUS_STEP);
+            }
             break;
         case 'x':
-            // zoom out
+            if (HEX_RADIUS - HEX_RADIUS_STEP >= HEX_RADIUS_MIN) {
+                tiles = zoomHexTiles(tiles, HEX_RADIUS - HEX_RADIUS_STEP);
+            }
             break;
         case 'r':
             resetHexes(tiles);

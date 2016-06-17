@@ -5,7 +5,7 @@
 var HEX_RADIUS = 25;
 var HEX_RADIUS_STEP = 5;
 var HEX_RADIUS_MIN = 5;
-var HEX_RADIUS_MAX = 40;
+var HEX_RADIUS_MAX = 120;
 var BOARD_WIDTH_TILES = 20;
 var BOARD_HEIGHT_TILES = 14;
 
@@ -164,6 +164,8 @@ HexTile.prototype = {
         } else {
             this.changeColor(this.prevColorIndex);
         }
+        modeTextBG.bringToFront();
+        modeText.bringToFront();
     },
     toggleSelected: function(sel) {
         this.selected = sel;
@@ -181,6 +183,8 @@ HexTile.prototype = {
         } else {
             this.changeColor(this.prevColorIndex);
         }
+        modeTextBG.bringToFront();
+        modeText.bringToFront();
     }
 }
 

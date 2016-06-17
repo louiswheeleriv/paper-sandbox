@@ -36,6 +36,12 @@ var HEX_COLORS_RAINBOW = [
 var BOARD_WIDTH_PIXELS = (1.5 * BOARD_WIDTH_TILES * HEX_RADIUS);
 var BOARD_HEIGHT_PIXELS = (BOARD_HEIGHT_TILES * 2 * HEX_DIST_A);
 
+var MODE_TEXT_BG_POINT = [15, 20];
+var MODE_TEXT_BG_COLOR = '#ffffff';
+var MODE_TEXT_POINT = [20, 40];
+var MODE_TEXT_COLOR = '#000000';
+var MODE_TEXT_FONT_SIZE = 20;
+
 //
 // Paths for entity appearance
 //
@@ -76,7 +82,36 @@ var hexSymbolWhite = new Symbol(hexPathWhite);
 var hexSymbols = [];
 _.each(hexPaths, function(hexPath) {
     hexSymbols.push(new Symbol(hexPath));
-})
+});
+
+//
+// Modes
+//
+
+var modes = {
+    dragging: 'Mode: Drag',
+    selecting: 'Mode: Select',
+    drawing: 'Mode: Draw'
+};
+var mode = modes.dragging;
+
+//
+// Text on screen
+//
+
+var modeTextBG = new Path.Rectangle({
+    point: MODE_TEXT_BG_POINT,
+    size: [115, 28],
+    fillColor: MODE_TEXT_BG_COLOR
+});
+
+var modeText = new PointText({
+    point: MODE_TEXT_POINT,
+    justification: 'left',
+    fontSize: MODE_TEXT_FONT_SIZE,
+    fillColor: MODE_TEXT_COLOR,
+    content: mode
+});
 
 //
 // Constructors
@@ -173,13 +208,6 @@ var hoveredTile;
 var selectedTile;
 var freakingOut = false;
 
-var modes = {
-    dragging: 'DRAG',
-    selecting: 'SELECT',
-    drawing: 'DRAW'
-};
-var mode = modes.dragging;
-
 function generateHexTiles(rows, cols) {
     return generateHexTiles(rows, cols, false);
 }
@@ -208,6 +236,8 @@ function generateHexTiles(rows, cols, isRainbow) {
             }
         }
     }
+    modeTextBG.bringToFront();
+    modeText.bringToFront();
     return _tiles;
 }
 
@@ -230,6 +260,8 @@ function generateHexTilesWithMap(tileDefs) {
             _tiles[i].push(tile);
         }
     }
+    modeTextBG.bringToFront();
+    modeText.bringToFront();
     return _tiles;
 }
 
@@ -325,7 +357,10 @@ function zoomHexTiles(_tiles, hexRadius) {
             outputTiles[i].push(tile);
         }
     }
-
+    
+    modeTextBG.bringToFront();
+    modeText.bringToFront();
+    
     return outputTiles;
 }
 
@@ -371,12 +406,15 @@ function onKeyUp(event) {
     switch(event.key) {
         case 'a':
             switchMode(modes.dragging);
+            updateModeText(modes.dragging, [115, 28]);
             break;
         case 's':
             switchMode(modes.selecting);
+            updateModeText(modes.selecting, [126, 27]);
             break;
         case 'd':
             switchMode(modes.drawing);
+            updateModeText(modes.drawing, [117, 27]);
             break;
         case 'f':
             freakingOut = false;
@@ -554,6 +592,8 @@ function freakOut(_tiles) {
             tile.changeColor(clr);
         });
     });
+    modeTextBG.bringToFront();
+    modeText.bringToFront();
 }
 
 function resetHexes(_tiles) {
@@ -564,4 +604,16 @@ function resetHexes(_tiles) {
     });
     hoveredTile = null;
     selectedTile = null;
+}
+
+function updateModeText(content, size) {
+    modeTextBG.remove();
+    modeTextBG = new Path.Rectangle({
+        point: MODE_TEXT_BG_POINT,
+        size: size,
+        fillColor: MODE_TEXT_BG_COLOR
+    });
+    
+    modeText.content = content;
+    modeText.bringToFront();
 }

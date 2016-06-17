@@ -541,6 +541,8 @@ function gameOver() {
     // Player is dead!
     deathText.visible = true;
     restartText.visible = true;
+    deathText.bringToFront();
+    restartText.bringToFront();
     invaders = clearInvaders(invaders);
     bullets = clearBullets(bullets);
 }
